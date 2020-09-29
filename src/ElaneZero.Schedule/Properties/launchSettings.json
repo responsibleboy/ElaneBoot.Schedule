@@ -1,0 +1,14 @@
+﻿{
+  "profiles": {
+    "ElaneZero.Schedule": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "schedule/index",
+      "applicationUrl": "http://localhost:8100",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://*:8100"
+      }
+    }
+  }
+}

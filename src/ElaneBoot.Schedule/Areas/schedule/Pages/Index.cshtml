@@ -1,0 +1,214 @@
+﻿@page
+@{
+    ViewData["Title"] = "任务调度平台";
+}
+
+<div class="row" style="margin-bottom:20px;">
+    <button type="button" class="btn btn-primary" onclick="addJob()">新增任务</button>
+</div>
+
+<div class="row">
+    <table class="table" id="table">
+        <tr>
+            <th>名称</th>
+            <th>类型</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>Cron</th>
+            <th>请求地址</th>
+            <th>请求方式</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
+    </table>
+</div>
+
+
+<div class="modal fade" id="modal1" tabindex="-1" role="dialog" aria-labelledby="modalLabel1">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="modalLabel1">任务详情</h4>
+            </div>
+            <div class="modal-body">
+                <form id="form">
+                    <div class="form-group" style="display:none">
+                        <label class="control-label">任务ID:</label>
+                        <input type="text" class="form-control" name="jobId" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">任务名称:</label>
+                        <input type="text" class="form-control" name="jobName">
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">任务类型:</label>
+                        <select class="form-control" name="jobType">
+                            <option value="Plan">计划任务</option>
+                            <option value="Queue">队列任务</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">开始时间:</label>
+                        <input type="text" class="form-control" name="startDateTime" id="startDateTime">
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">结束时间:</label>
+                        <input type="text" class="form-control" name="endDateTime" id="endDateTime">
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">Cron表达式:</label>
+                        <input type="text" class="form-control" name="cron">
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">请求地址:</label>
+                        <input type="text" class="form-control" name="requestUrl">
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">请求方式:</label>
+                        <select class="form-control" name="requestMethod">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">请求参数(JSON格式):</label>
+                        <textarea class="form-control" rows="3" name="requestParam"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveJob()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    $('#startDateTime').datetimepicker({ format: 'YYYY-MM-DD HH:mm:ss' });
+    $('#endDateTime').datetimepicker({ format: 'YYYY-MM-DD HH:mm:ss' });
+
+    httpGet({
+        url: "/Schedule/Schedule/GetJobList",
+        success: function (r) {
+            var data = r.data;
+            for (var i = 0; i < data.length; i++) {
+                var tr = '<tr><td>' + data[i].jobName + '</td><td>' + data[i].jobType + '</td><td>' + data[i].startDateTime + '</td><td>' + data[i].endDateTime + '</td><td>' + data[i].cron + '</td><td>' + data[i].requestUrl + '</td><td>' + data[i].requestMethod + '</td><td>' + data[i].jobState + '</td>';
+                tr += '<td><a href="javascript:logJob(\'' + data[i].jobId + '\')">日志</a><a href="javascript:startJob(\'' + data[i].jobId + '\')">启动</a><a href="javascript:stopJob(\'' + data[i].jobId + '\')">停止</a><a href="javascript:editJob(\'' + data[i].jobId + '\')">编辑</a><a href="javascript:deleteJob(\'' + data[i].jobId + '\')">删除</a></td>';
+                tr += '</tr>';
+                $('#table').append(tr);
+            }
+        }
+    });
+
+    function stopJob(jobId) {
+        var p = {
+            url: '/Schedule/Schedule/StopJob?jobId=' + jobId,
+            success: function (r) {
+                alert('操作成功');
+                refresh();
+            }
+        };
+        httpPost(p);
+    }
+
+    function startJob(jobId) {
+        var p = {
+            url: '/Schedule/Schedule/StartJob?jobId=' + jobId,
+            success: function (r) {
+                alert('操作成功');
+                refresh();
+            }
+        };
+        httpPost(p);
+    }
+
+    function addJob() {
+        $('#modal1').modal()
+        setFormData({ jobType: 'Plan', requestMethod: 'GET' });
+    }
+
+    function editJob(jobId) {
+        $('#modal1').modal()
+        var p = {
+            url: "/Schedule/Schedule/GetJob?jobId=" + jobId,
+            success: function (r) {
+                var o = r.data;
+                setFormData(o);
+            }
+        };
+        httpGet(p);
+    }
+
+    function deleteJob(jobId) {
+        var p = {
+            url: '/Schedule/Schedule/DeleteJob?jobId=' + jobId,
+            success: function (r) {
+                alert('操作成功');
+                refresh();
+            }
+        };
+        httpDelete(p);
+    }
+
+    function saveJob() {
+        var data = getFormData();
+
+        var p = {
+            url: null,
+            data: JSON.stringify(data),
+            success: function (r) {
+                $('#modal1').modal('hide');
+                refresh();
+            }
+        };
+        if (data.jobId) {
+            p.url = '/Schedule/Schedule/UpdateJob';
+            httpPost(p);
+        }
+        else {
+            p.url = '/Schedule/Schedule/AddJob';
+            httpPut(p);
+        }
+    }
+
+    function logJob(jobId) {
+        window.location.href = '/Schedule/Log?jobId=' + jobId;
+    }
+
+
+    function refresh() {
+        window.location.href = window.location.href;
+    }
+    function getFormData() {
+        var form = $('#form');
+        var jobId = form.find('[name="jobId"]').val();
+        var jobName = form.find('[name="jobName"]').val();
+        var jobType = form.find('[name="jobType"]').val();
+        var startDateTime = form.find('[name="startDateTime"]').val();
+        var endDateTime = form.find('[name="endDateTime"]').val();
+        var cron = form.find('[name="cron"]').val();
+        var requestUrl = form.find('[name="requestUrl"]').val();
+        var requestMethod = form.find('[name="requestMethod"]').val();
+        var requestParam = form.find('[name="requestParam"]').val();
+        var r = { jobId: jobId, jobName: jobName, jobType: jobType, startDateTime: startDateTime, endDateTime: endDateTime, cron: cron, requestUrl: requestUrl, requestMethod: requestMethod, requestParam: requestParam };
+        return r;
+    }
+    function setFormData(o) {
+        var form = $('#form');
+        form.find('[name="jobId"]').val(o.jobId);
+        form.find('[name="jobName"]').val(o.jobName);
+        form.find('[name="jobType"]').val(o.jobType);
+        form.find('[name="startDateTime"]').val(o.startDateTime);
+        form.find('[name="endDateTime"]').val(o.endDateTime);
+        form.find('[name="cron"]').val(o.cron);
+        form.find('[name="requestUrl"]').val(o.requestUrl);
+        form.find('[name="requestMethod"]').val(o.requestMethod);
+        form.find('[name="requestParam"]').val(o.requestParam);
+    }
+</script>

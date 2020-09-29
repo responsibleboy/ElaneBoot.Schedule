@@ -1,0 +1,210 @@
+﻿@page
+@{
+    ViewData["Title"] = "任务调度平台";
+}
+
+<div class="row" style="margin-bottom:20px;">
+    <form class="form-inline">
+        <div class="form-group">
+            <label for="s_job">任务：</label>
+            <select class="form-control" id="s_job"></select>
+        </div>
+        <div class="form-group">
+            <label for="s_job">状态码：</label>
+            <select class="form-control" id="s_statusCode">
+                <option value="">全部</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<div class="row">
+    <table class="table" id="table">
+        <tr>
+            <th>任务</th>
+            <th>请求地址</th>
+            <th>请求方式</th>
+            <th>状态码</th>
+            <th>执行时长</th>
+            <th>请求时间</th>
+            <th>操作</th>
+        </tr>
+    </table>
+    <nav aria-label="Page navigation">
+        <ul id="page"></ul>
+    </nav>
+</div>
+
+
+<div class="modal fade" id="modal1" tabindex="-1" role="dialog" aria-labelledby="modalLabel1">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="modalLabel1">日志详情</h4>
+            </div>
+            <div class="modal-body">
+                <form id="form">
+                    <div class="form-group" style="display:none">
+                        <label class="control-label">日志ID:</label>
+                        <input type="text" class="form-control" name="logId" readonly>
+                    </div>
+                    <div class="form-group" style="display:none">
+                        <label class="control-label">任务ID:</label>
+                        <input type="text" class="form-control" name="jobId" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">任务名称:</label>
+                        <input type="text" class="form-control" name="jobName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">请求地址:</label>
+                        <input type="text" class="form-control" name="requestUrl" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">请求方式:</label>
+                        <input type="text" class="form-control" name="requestMethod" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">请求参数(JSON格式):</label>
+                        <textarea class="form-control" rows="3" name="requestParam" readonly></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">状态码:</label>
+                        <input type="text" class="form-control" name="statusCode" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">执行时长(毫秒):</label>
+                        <input type="text" class="form-control" name="executeTime" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">结果:</label>
+                        <textarea class="form-control" rows="3" name="result" readonly></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">异常:</label>
+                        <textarea class="form-control" rows="3" name="exception" readonly></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">请求时间:</label>
+                        <input type="text" class="form-control" name="dateTime" readonly>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    var _data = [];
+    var _pageInfo = { pageIndex: 1, pageSize: 20, totalCount: 0 };
+
+    var jobId = getUrlParam('jobId');
+    var statusCode = getUrlParam('statusCode'); $('#s_statusCode').val(statusCode);
+
+    load();
+
+    function load() {
+        $.get("/Schedule/Schedule/GetLogPage?jobId=" + jobId + "&statusCode=" + statusCode + '&pageIndex=' + _pageInfo.pageIndex + '&pageSize=' + _pageInfo.pageSize, function (r) {
+            _data = r.data.items;
+            _pageInfo = r.data.pageInfo;
+
+            //除了表头其他移除
+            $("#table tr").not(':eq(0)').empty()
+
+            var data = _data;
+            for (var i = 0; i < data.length; i++) {
+                var tr = '<tr><td>' + data[i].jobName + '</td><td>' + data[i].requestUrl + '</td><td>' + data[i].requestMethod + '</td><td>' + data[i].statusCode + '</td><td>' + data[i].executeTime + '</td><td>' + data[i].dateTime + '</td>';
+                tr += '<td><a href="javascript:showLog(\'' + data[i].logId + '\')">详情</a></td>';
+                tr += '</tr>';
+                $('#table').append(tr);
+            }
+
+
+            $('#page').bootstrapPaginator({
+                currentPage: _pageInfo.pageIndex,//当前的请求页面。
+                totalPages: _pageInfo.totalPage,//一共多少页。
+                size: "normal",//应该是页眉的大小。
+                bootstrapMajorVersion: 3,//bootstrap的版本要求。
+                alignment: "right",
+                numberOfPages: 5,//一页列出多少数据。
+                itemTexts: function (type, page, current) {//如下的代码是将页眉显示的中文显示我们自定义的中文。
+                    switch (type) {
+                        case "first": return "首页";
+                        case "prev": return "上一页";
+                        case "next": return "下一页";
+                        case "last": return "末页";
+                        case "page": return page;
+                    }
+                },
+                onPageChanged: function (a, b, c) {
+                    _pageInfo.pageIndex = c;
+                    load();
+                }
+            });
+
+        });
+    }
+
+    httpGet({
+        url: "/Schedule/Schedule/GetJobList",
+        success: function (r) {
+            //先添加一个全部
+            $('#s_job').append('<option value=\'\'>全部</option>');
+            var data = r.data;
+            for (var i = 0; i < data.length; i++) {
+                var op = '<option value=\'' + data[i].jobId + '\'>' + data[i].jobName + '</option>';
+                $('#s_job').append(op);
+            }
+            //设置默认值
+            $('#s_job').val(jobId);
+        }
+    });
+
+    $('#s_job').change(function () {
+        jobId = $(this).val();
+        window.location.href = '/Schedule/Log?jobId=' + jobId + '&statusCode=' + statusCode;
+    });
+    $('#s_statusCode').change(function () {
+        statusCode = $(this).val();
+        window.location.href = '/Schedule/Log?jobId=' + jobId + '&statusCode=' + statusCode;
+    });
+
+    function showLog(logId) {
+        $('#modal1').modal();
+        var log = getLog(logId);
+        setFormData(log);
+    }
+    function getLog(logId) {
+        var o = {};
+        for (var i = 0; i < _data.length; i++) {
+            if (_data[i].logId == logId) {
+                o = _data[i];
+                break;
+            }
+        }
+        return o;
+    }
+    function setFormData(o) {
+        var form = $('#form');
+        form.find('[name="logId"]').val(o.logId);
+        form.find('[name="jobId"]').val(o.jobId);
+        form.find('[name="jobName"]').val(o.jobName);
+        form.find('[name="requestUrl"]').val(o.requestUrl);
+        form.find('[name="requestMethod"]').val(o.requestMethod);
+        form.find('[name="requestParam"]').val(o.requestParam);
+        form.find('[name="statusCode"]').val(o.statusCode);
+        form.find('[name="executeTime"]').val(o.executeTime);
+        form.find('[name="result"]').val(o.result);
+        form.find('[name="exception"]').val(o.exception);
+        form.find('[name="dateTime"]').val(o.dateTime);
+
+    }
+</script>

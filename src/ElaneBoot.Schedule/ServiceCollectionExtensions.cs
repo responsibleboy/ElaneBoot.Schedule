@@ -86,10 +86,9 @@ namespace ElaneBoot.Schedule
             //静态资源
             app.UseStaticFiles();
 
-            var dllPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "ElaneBoot.Schedule.dll");
             app.UseStaticFiles(new StaticFileOptions
             {
-                FileProvider = new ManifestEmbeddedFileProvider(Assembly.LoadFrom(dllPath), "wwwroot")
+                FileProvider = new ManifestEmbeddedFileProvider(Assembly.GetExecutingAssembly(), "wwwroot")
             });
 
             ScheduleManager.Start();
